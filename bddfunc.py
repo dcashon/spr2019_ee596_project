@@ -45,8 +45,8 @@ def sliding_window(img, dx, dy, stride):
 
 def training_batcher(batch_num, minibatch_size, mode='classification'):
     if mode is 'classification':
-        x1 = np.load('train_img_' + str(batch_num) + '.npy')
-        x2 = np.load('train_label_' + str(batch_num) + '.npy')
+        x1 = np.load('./4g/train_img_pixnum2000_' + str(batch_num) + '.npy')
+        x2 = np.load('./4g/train_label_pixnum2000_' + str(batch_num) + '.npy')
         start = 0
         end = start + minibatch_size
         todo = len(x1) // minibatch_size + 1 # remainder

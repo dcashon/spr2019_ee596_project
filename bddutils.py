@@ -29,11 +29,6 @@ class DataHandler():
         "labels/bdd100k_labels_images_train.json", 'rb'))
         self.classes = ['bike', 'bus', 'car', 'motor', 'person', 'rider',
         'traffic light', 'traffic sign', 'train', 'truck']
-    
-    
-
-
-
 
     def get_random(self, num_samples):
         """
@@ -60,12 +55,13 @@ class DataHandler():
             plt.yticks([])
             plt.imshow(temp_img)
     
-    def bb_to_train(self, size, batch_size, save_dir='./'):
+    def bb_to_train(self, size, batch_size, img_dir, label_dir, save_dir='./', pix_num=50*50):
         """
         Parses all training images, looks at all classes present in the image,
         and saves them as individual images for NN training. Computes centroid
         of bounding box and crops the image with the smallest square that
-        contains said bounding box. 
+        contains said bounding box. Enforces minimum image size as pix_num,
+        as any smaller and image information is basically lost
 
         Inputs:
             size:      size for image reshape. Assumed square
@@ -76,7 +72,11 @@ class DataHandler():
             None: 
 
         """
-        enc = LabelBinarizer() # to one hot encode
+        # load in the JSON
+        json_labels = json.load(open(label_dir, 'rb'))
+        # get image list
+        img_list = os.listdir(img_dir)
+
         # note batch_size refers to number of images to process,
         # not necssarily equal ot number of output images 
         num_batches = len(self.train_labels) // batch_size
@@ -86,11 +86,12 @@ class DataHandler():
         for batch_num in range(batch_size): # remainder is ignored
             images, lab, bbox = [], [], []
             error_count = 0 # issue if bbox outside image
-            print('Saving Img from: \t ' + str(start) + " to " + str(end))
+            pass_count, skip_count = 0, 0
+            print('Saving Img from: %s to %s ' % (start, end))
             for i in range(start, end):
-                temp_img = plt.imread(self.train_img_dir /
-                        self.train_labels[i]['name']) # load the image
-                for item in self.train_labels[i]['labels']:
+                temp_img = plt.imread(img_dir /
+                        json_labels[i]['name']) # load the image
+                for item in json_labels[i]['labels']:
                     # check to make sure its a relevant cat
                     if (item['category'] in self.classes and not
                     item['attributes']['occluded'] and not
@@ -100,37 +101,43 @@ class DataHandler():
                         y1 = int(item['box2d']['y1'])
                         x2 = int(item['box2d']['x2'])
                         y2 = int(item['box2d']['y2'])
-                        x_center = x1 + (x2 - x1) // 2
-                        y_center = y1 + (y2 - y1) // 2
-                        dim = max((x2 - x1) // 2, (y2 - y1) // 2)
-                        top_left_x = x_center - dim
-                        top_left_y = y_center - dim
-                        # get the image based on centroid box
-                        to_reshape = temp_img[(y_center-dim):(y_center+dim),
+                        # check if image size is big enough to warrant a save
+                        if ((x2-x1)*(y2-y1)) > pix_num:
+                            pass_count += 1
+                            x_center = x1 + (x2 - x1) // 2
+                            y_center = y1 + (y2 - y1) // 2
+                            dim = max((x2 - x1) // 2, (y2 - y1) // 2)
+                            top_left_x = x_center - dim
+                            top_left_y = y_center - dim
+                            # get the image based on centroid box
+                            to_reshape = temp_img[(y_center-dim):(y_center+dim),
                             (x_center - dim):(x_center + dim), :]
-                        # get the new bounding box w.r.t patch
-                        h_r, w_r, c_r = to_reshape.shape
-                        try:
-                            x1_shift = (x1 - top_left_x) * (size//h_r)
-                            y1_shift = (y1 - top_left_y) * (size//w_r)
-                            x2_shift = x1_shift + (x2-x1) * (size//h_r)
-                            y2_shift = y1_shift + (y2-y1) * (size//w_r)
-                            dx = x2_shift - x1_shift
-                            dy = y2_shift - y1_shift
-                            images.append(cv2.resize(to_reshape, (size, size)))
-                            bbox.append(np.array([x1_shift, y1_shift, dx, dy]))
-                            # get object integer class label
-                            lab.append(self.classes.index(item['category']))
-                        except:
-                            error_count += 1
+                            # get the new bounding box w.r.t patch
+                            h_r, w_r, c_r = to_reshape.shape
+                            try:
+                                x1_shift = (x1 - top_left_x) * (size//h_r)
+                                y1_shift = (y1 - top_left_y) * (size//w_r)
+                                x2_shift = x1_shift + (x2-x1) * (size//h_r)
+                                y2_shift = y1_shift + (y2-y1) * (size//w_r)
+                                dx = x2_shift - x1_shift
+                                dy = y2_shift - y1_shift
+                                images.append(cv2.resize(to_reshape, (size, size)))
+                                bbox.append(np.array([x1_shift, y1_shift, dx, dy]))
+                                # get object integer class label
+                                lab.append(self.classes.index(item['category']))
+                            except:
+                                error_count += 1
+                        else:
+                            skip_count += 1
             # save
             print('Saving... \n')
-            print('Total Images in batch:' + str(len(images)))
-            print('Total Num Errors: \t' + str(error_count))
-            np.save(open(save_dir + 'train_img_' + str(batch_num) + '.npy', 'wb'), np.array(images))
-            np.save(open(save_dir + 'train_label_' + str(batch_num) + '.npy', 'wb'),
+            print('Total Images in batch: %s' % len(images))
+            print('Total Num Errors: %s' % error_count)
+            print('Total Skipped Images (too small): %s' % skip_count)
+            np.save(open(save_dir + 'test_img_pixnum' + str(pix_num) + "_" + str(batch_num) + '.npy', 'wb'), np.array(images))
+            np.save(open(save_dir + 'test_label_pixnum' + str(pix_num) + "_" + str(batch_num) + '.npy', 'wb'),
                     np.array(lab))
-            np.save(open(save_dir + 'train_bbox_' + str(batch_num) + '.npy', 'wb'),
+            np.save(open(save_dir + 'test_bbox_pixnum' + str(pix_num) + "_" + str(batch_num) + '.npy', 'wb'),
                     np.array(bbox))
             start += batch_size
             end += batch_size
