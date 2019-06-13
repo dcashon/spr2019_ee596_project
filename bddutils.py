@@ -115,12 +115,10 @@ class DataHandler():
                             # get the new bounding box w.r.t patch
                             h_r, w_r, c_r = to_reshape.shape
                             try:
-                                x1_shift = (x1 - top_left_x) * (size//h_r)
-                                y1_shift = (y1 - top_left_y) * (size//w_r)
-                                x2_shift = x1_shift + (x2-x1) * (size//h_r)
-                                y2_shift = y1_shift + (y2-y1) * (size//w_r)
-                                dx = x2_shift - x1_shift
-                                dy = y2_shift - y1_shift
+                                x1_shift = (x1 - top_left_x) * (size/w_r)
+                                y1_shift = (y1 - top_left_y) * (size/h_r)
+                                dx = (x2-x1) * (size/w_r)
+                                dy = (y2-y1) * (size/h_r)
                                 images.append(cv2.resize(to_reshape, (size, size)))
                                 bbox.append(np.array([x1_shift, y1_shift, dx, dy]))
                                 # get object integer class label
