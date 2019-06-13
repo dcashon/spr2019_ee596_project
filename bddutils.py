@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pathlib import Path
 from sklearn.preprocessing import LabelBinarizer
+import codecs
 
 
 
@@ -23,10 +24,10 @@ class DataHandler():
     """
     def __init__(self, data_dir):
         self.data_dir = Path(data_dir)
-        self.train_img = os.listdir(self.data_dir / "images" / "100k"/ "train")
-        self.train_img_dir = self.data_dir / "images" / "100k" / "train"
-        self.train_labels = json.load(open(self.data_dir / 
-        "labels/bdd100k_labels_images_train.json", 'rb'))
+        #self.train_img = os.listdir(self.data_dir / "images" / "100k"/ "train")
+        #self.train_img_dir = self.data_dir / "images" / "100k" / "train"
+        #self.train_labels = json.load(open(self.data_dir / 
+        #"labels/bdd100k_labels_images_train.json", 'rb'))
         self.classes = ['bike', 'bus', 'car', 'motor', 'person', 'rider',
         'traffic light', 'traffic sign', 'train', 'truck']
 
@@ -73,7 +74,8 @@ class DataHandler():
 
         """
         # load in the JSON
-        json_labels = json.load(open(label_dir, 'rb'))
+        reader = codecs.getreader('utf-8')
+        json_labels = json.load(reader(label_dir))
         # get image list
         img_list = os.listdir(img_dir)
 
